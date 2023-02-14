@@ -1,0 +1,38 @@
+[profile.release]
+debug = true
+
+[package]
+name = "helium-mock-node"
+version = "0.1.0"
+description = "Mock the blockchain-node GRPC for testing"
+edition = "2021"
+authors = ["Jeff Grunewald <jeff.grunewald@gmail.com"]
+license = "Apache-2.0"
+
+[dependencies]
+anyhow = {version = "1", features = ["backtrace"]}
+clap = {version = "3", features = ["derive"]}
+config = {version = "0", default-features = false, features = ["toml"]}
+futures = "*"
+csv = "*"
+futures-util = "*"
+helium-crypto = "0"
+helium-proto = {git = "https://github.com/helium/proto", branch = "master", features = ["services"]}
+prost = "*"
+rand = "*"
+serde = {version = "1", features = ["derive"]}
+thiserror = "1"
+tokio = {version = "1", default-features = false, features = [
+  "fs",
+  "macros",
+  "signal",
+  "rt-multi-thread",
+  "rt",
+  "process",
+  "time",
+]}
+tokio-stream = "0"
+tonic = "0"
+tracing = "0"
+tracing-subscriber = {version = "0", default-features = false, features = ["env-filter", "registry", "fmt"]}
+triggered = "0"
