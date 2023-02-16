@@ -1,10 +1,11 @@
 use anyhow::{Error, Result};
 use clap::Parser;
 use futures_util::TryFutureExt;
-use helium_mock_node::{
-    follower_service::FollowerService, gateway_oracle::GatewayOracle,
-    height_oracle::{HeightOracle, self},
-    settings::Settings
+use helium_mock_follower::{
+    follower_service::FollowerService,
+    gateway_oracle::GatewayOracle,
+    height_oracle::{self, HeightOracle},
+    settings::Settings,
 };
 use helium_proto::services::follower::follower_server::FollowerServer;
 use std::{path::PathBuf, time::Duration};
@@ -64,7 +65,8 @@ impl Daemon {
 
         let gateway_oracle = GatewayOracle::new(settings.gateways.as_ref()).await?;
         let mut height_oracle = HeightOracle::new(settings.height);
-        let follower_server = FollowerService::new(height_req, gateway_oracle, shutdown_listener.clone());
+        let follower_server =
+            FollowerService::new(height_req, gateway_oracle, shutdown_listener.clone());
         let grpc_server = transport::Server::builder()
             .http2_keepalive_interval(Some(Duration::from_secs(250)))
             .http2_keepalive_timeout(Some(Duration::from_secs(60)))

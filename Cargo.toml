@@ -2,9 +2,9 @@
 debug = true
 
 [package]
-name = "helium-mock-node"
+name = "helium-mock-follower"
 version = "0.1.0"
-description = "Mock the blockchain-node GRPC for testing"
+description = "Mock the blockchain-node GRPC follower service for testing"
 edition = "2021"
 authors = ["Jeff Grunewald <jeff.grunewald@gmail.com"]
 license = "Apache-2.0"

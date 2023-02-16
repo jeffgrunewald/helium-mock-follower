@@ -1,14 +1,9 @@
 use helium_crypto::PublicKeyBinary;
 use helium_proto::{
-    services::follower::GatewayInfo,
-    BlockchainRegionParamV1, BlockchainRegionParamsV1,
-    BlockchainRegionSpreadingV1, RegionSpreading, TaggedSpreading,
-    GatewayStakingMode, Region
+    services::follower::GatewayInfo, BlockchainRegionParamV1, BlockchainRegionParamsV1,
+    BlockchainRegionSpreadingV1, GatewayStakingMode, Region, RegionSpreading, TaggedSpreading,
 };
-use std::{
-    collections::HashMap, fs::File,
-    str::FromStr, sync::Arc,
-};
+use std::{collections::HashMap, fs::File, str::FromStr, sync::Arc};
 use tokio::sync::RwLock;
 
 pub struct GatewayOracle(pub Arc<RwLock<HashMap<Vec<u8>, GatewayInfo>>>);
@@ -26,44 +21,41 @@ pub enum GatewayError {
 impl GatewayOracle {
     pub async fn new(csv_path: Option<&String>) -> Result<Self, GatewayError> {
         let mut gateway_map = Self(Arc::new(RwLock::new(HashMap::new())));
-        match csv_path {
-            Some(csv_path) => {
-                let file = File::open(csv_path)?;
-                let mut reader = csv::ReaderBuilder::new()
-                    .has_headers(true)
-                    .from_reader(file);
-                for record in reader.deserialize() {
-                    let csv_gw: CsvRecord = record?;
-                    let proto_gw = GatewayInfo {
-                        address: csv_gw.0.into(),
-                        owner: csv_gw.1.into(),
-                        location: csv_gw.2,
-                        staking_mode: {
-                            match csv_gw.3.to_lowercase().as_ref() {
-                                "light" => GatewayStakingMode::Light.into(),
-                                "dataonly" => GatewayStakingMode::Dataonly.into(),
-                                // everything else is a full hotspot, why not?
-                                _ => GatewayStakingMode::Full.into(),
-                            }
-                        },
-                        gain: csv_gw.4,
-                        region: Region::from_str(csv_gw.5.as_str())?.into(),
-                        region_params: region_params(),
-                    };
-                    gateway_map.insert(proto_gw.address.clone(), proto_gw).await
+        if let Some(csv_path) = csv_path {
+            let file = File::open(csv_path)?;
+            let mut reader = csv::ReaderBuilder::new()
+                .has_headers(true)
+                .from_reader(file);
+            for record in reader.deserialize() {
+                let csv_gw: CsvRecord = record?;
+                let proto_gw = GatewayInfo {
+                    address: csv_gw.0.into(),
+                    owner: csv_gw.1.into(),
+                    location: csv_gw.2,
+                    staking_mode: {
+                        match csv_gw.3.to_lowercase().as_ref() {
+                            "light" => GatewayStakingMode::Light.into(),
+                            "dataonly" => GatewayStakingMode::Dataonly.into(),
+                            // everything else is a full hotspot, why not?
+                            _ => GatewayStakingMode::Full.into(),
+                        }
+                    },
+                    gain: csv_gw.4,
+                    region: Region::from_str(csv_gw.5.as_str())?.into(),
+                    region_params: region_params(),
                 };
+                gateway_map.insert(proto_gw.address.clone(), proto_gw).await
             }
-            None => (),
         }
-        tracing::info!("Loaded {} testing gateway info records", gateway_map.len().await);
+        tracing::info!(
+            "Loaded {} testing gateway info records",
+            gateway_map.len().await
+        );
         Ok(gateway_map)
     }
 
     pub async fn get(&self, pubkey: &Vec<u8>) -> Option<GatewayInfo> {
-        match self.0.read().await.get(pubkey) {
-            Some(gateway) => Some(gateway.clone()),
-            None => None
-        }
+        self.0.read().await.get(pubkey).cloned()
     }
 
     pub async fn insert(&mut self, pubkey: Vec<u8>, info: GatewayInfo) {
@@ -74,16 +66,31 @@ impl GatewayOracle {
         self.0.read().await.len()
     }
 
-    pub fn clone(&self) -> Self {
-        Self(self.0.clone())
-    }
-
     pub async fn values(&self) -> impl Iterator<Item = GatewayInfo> {
-        self.0.read().await.values().map(|gw| gw.clone()).collect::<Vec<GatewayInfo>>().into_iter()
+        self.0
+            .read()
+            .await
+            .values()
+            .cloned()
+            .collect::<Vec<GatewayInfo>>()
+            .into_iter()
     }
 }
 
-type CsvRecord = (PublicKeyBinary, PublicKeyBinary, String, String, i32, String);
+impl std::clone::Clone for GatewayOracle {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+type CsvRecord = (
+    PublicKeyBinary,
+    PublicKeyBinary,
+    String,
+    String,
+    i32,
+    String,
+);
 
 fn region_params() -> Option<BlockchainRegionParamsV1> {
     let tagged_spreading = vec![

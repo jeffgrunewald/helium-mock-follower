@@ -1,7 +1,7 @@
 use anyhow::Result;
 use tokio::{
     sync::{mpsc, oneshot},
-    time
+    time,
 };
 
 #[derive(Debug)]
@@ -53,7 +53,7 @@ impl RespRx {
 
 #[derive(Debug)]
 pub struct HeightOracle {
-    height: u64
+    height: u64,
 }
 
 impl HeightOracle {
@@ -68,9 +68,7 @@ impl HeightOracle {
         mut receiver: BlockRes,
         shutdown: &triggered::Listener,
     ) -> Result<()> {
-        let mut timer = time::interval(
-            std::time::Duration::from_secs(60)
-        );
+        let mut timer = time::interval(std::time::Duration::from_secs(60));
 
         loop {
             if shutdown.is_triggered() {
@@ -86,7 +84,7 @@ impl HeightOracle {
                     }
                 },
                 _ = timer.tick() => {
-                    self.height = self.height + 1;
+                    self.height += 1;
                 },
                 _ = shutdown.clone() => return Ok(()),
             }

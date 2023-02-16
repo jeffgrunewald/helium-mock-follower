@@ -9,7 +9,7 @@ use std::{
 #[derive(Debug, Deserialize)]
 pub struct Settings {
     /// RUST_LOG compatible settings string. Default to
-    /// "helium_mock_node=info"
+    /// "helium_mock_follower=info"
     #[serde(default = "default_log")]
     pub log: String,
     /// Listen address. Required. Default is 0.0.0.0:8080
@@ -19,11 +19,11 @@ pub struct Settings {
     #[serde(default = "default_height")]
     pub height: u64,
     /// File path of gateways to load at runtime
-    pub gateways: Option<String>
+    pub gateways: Option<String>,
 }
 
 pub fn default_log() -> String {
-    "helium_mock_node=debug".to_string()
+    "helium_mock_follower=debug".to_string()
 }
 
 pub fn default_listen_addr() -> String {
@@ -39,8 +39,8 @@ impl Settings {
     /// can be overridden with environment variables.
     ///
     /// Environment overrides have the same name as the entries
-    /// in the settings file in uppercase and prefixed with "NODE_".
-    /// Example: "NODE_LISTEN" will override the grpc listen address.
+    /// in the settings file in uppercase and prefixed with "FLW_".
+    /// Example: "FLW_LISTEN" will override the grpc listen address.
     pub fn new<P: AsRef<Path>>(path: Option<P>) -> Result<Self, config::ConfigError> {
         let mut builder = Config::builder();
 
@@ -52,7 +52,7 @@ impl Settings {
 
         // Maybe add any environment variables
         builder
-            .add_source(Environment::with_prefix("NODE").separator("_"))
+            .add_source(Environment::with_prefix("FLW").separator("_"))
             .build()
             .and_then(|config| config.try_deserialize())
     }

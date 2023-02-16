@@ -1,6 +1,6 @@
 pub mod follower_service;
-pub mod height_oracle;
 pub mod gateway_oracle;
+pub mod height_oracle;
 pub mod settings;
 
 pub use follower_service::FollowerService;

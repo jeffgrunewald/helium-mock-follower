@@ -1,13 +1,10 @@
-use crate::{
-    GrpcResult, GrpcStreamResult,
-    gateway_oracle::GatewayOracle, height_oracle::BlockReq
-};
+use crate::{gateway_oracle::GatewayOracle, height_oracle::BlockReq, GrpcResult, GrpcStreamResult};
 use helium_proto::services::follower::{
-        self, follower_gateway_resp_v1::Result as GatewayResult, follower_error::Type,
-        FollowerGatewayReqV1, FollowerGatewayRespV1, FollowerGatewayStreamReqV1,
-        FollowerGatewayStreamRespV1, FollowerSubnetworkLastRewardHeightReqV1,
-        FollowerSubnetworkLastRewardHeightRespV1, FollowerTxnStreamReqV1,
-        FollowerTxnStreamRespV1, GatewayNotFound, FollowerError,
+    self, follower_error::Type, follower_gateway_resp_v1::Result as GatewayResult, FollowerError,
+    FollowerGatewayReqV1, FollowerGatewayRespV1, FollowerGatewayStreamReqV1,
+    FollowerGatewayStreamRespV1, FollowerSubnetworkLastRewardHeightReqV1,
+    FollowerSubnetworkLastRewardHeightRespV1, FollowerTxnStreamReqV1, FollowerTxnStreamRespV1,
+    GatewayNotFound,
 };
 use rand::Rng;
 use tonic::{Request, Response, Status};
@@ -19,7 +16,11 @@ pub struct FollowerService {
 }
 
 impl FollowerService {
-    pub fn new(height_oracle: BlockReq, gateway_oracle: GatewayOracle, shutdown: triggered::Listener) -> Self {
+    pub fn new(
+        height_oracle: BlockReq,
+        gateway_oracle: GatewayOracle,
+        shutdown: triggered::Listener,
+    ) -> Self {
         Self {
             gateway_oracle,
             height_oracle,
@@ -44,11 +45,18 @@ impl follower::follower_server::Follower for FollowerService {
     ) -> GrpcResult<FollowerGatewayRespV1> {
         let address = request.into_inner().address;
 
-        let height = self.height_oracle.req().await.map_err(|_| Status::internal("failed to retrieve height"))?.ok_or_else(|| Status::internal("failed to retrieve height"))?;
+        let height = self
+            .height_oracle
+            .req()
+            .await
+            .map_err(|_| Status::internal("failed to retrieve height"))?
+            .ok_or_else(|| Status::internal("failed to retrieve height"))?;
 
         let response = match self.gateway_oracle.get(&address).await {
-            Some(gateway_info) => Some(GatewayResult::Info(gateway_info.clone())),
-            None => Some(GatewayResult::Error(FollowerError { r#type: Some(Type::NotFound(GatewayNotFound { address }))}))
+            Some(gateway_info) => Some(GatewayResult::Info(gateway_info)),
+            None => Some(GatewayResult::Error(FollowerError {
+                r#type: Some(Type::NotFound(GatewayNotFound { address })),
+            })),
         };
 
         Ok(Response::new(FollowerGatewayRespV1 {
@@ -65,7 +73,12 @@ impl follower::follower_server::Follower for FollowerService {
         let batch_size = request.into_inner().batch_size;
 
         let (tx, rx) = tokio::sync::mpsc::channel(20);
-        let height = self.height_oracle.req().await.map_err(|_| Status::internal("failed to retrieve height"))?.ok_or_else(|| Status::internal("failed to retrieve height"))?;
+        let height = self
+            .height_oracle
+            .req()
+            .await
+            .map_err(|_| Status::internal("failed to retrieve height"))?
+            .ok_or_else(|| Status::internal("failed to retrieve height"))?;
         let gateways = self.gateway_oracle.clone();
         let shutdown_listener = self.shutdown.clone();
 
@@ -74,11 +87,16 @@ impl follower::follower_server::Follower for FollowerService {
 
             for gw_info in gateways.values().await {
                 if shutdown_listener.is_triggered() {
-                    return Ok(())
+                    return Ok(());
                 }
 
                 if batch.len() == batch_size as usize {
-                    if (tx.send(Ok(FollowerGatewayStreamRespV1 { gateways: batch.clone() }))).await.is_err() {
+                    if (tx.send(Ok(FollowerGatewayStreamRespV1 {
+                        gateways: batch.clone(),
+                    })))
+                    .await
+                    .is_err()
+                    {
                         break;
                     }
                     batch.clear()
@@ -89,11 +107,14 @@ impl follower::follower_server::Follower for FollowerService {
                 };
                 tracing::debug!("Pushing gateway into batch {:?}", gw_info.address);
                 batch.push(info)
-            };
+            }
 
-            if batch.len() > 0 {
-                tx.send(Ok(FollowerGatewayStreamRespV1 { gateways: batch })).await
-            } else { Ok(()) }
+            if !batch.is_empty() {
+                tx.send(Ok(FollowerGatewayStreamRespV1 { gateways: batch }))
+                    .await
+            } else {
+                Ok(())
+            }
         });
 
         Ok(Response::new(GrpcStreamResult::new(rx)))
@@ -103,10 +124,18 @@ impl follower::follower_server::Follower for FollowerService {
         &self,
         _request: Request<FollowerSubnetworkLastRewardHeightReqV1>,
     ) -> GrpcResult<FollowerSubnetworkLastRewardHeightRespV1> {
-        let height = self.height_oracle.req().await.map_err(|_| Status::internal("failed to retrieve height"))?.ok_or_else(|| Status::internal("failed to retrieve height"))?;
+        let height = self
+            .height_oracle
+            .req()
+            .await
+            .map_err(|_| Status::internal("failed to retrieve height"))?
+            .ok_or_else(|| Status::internal("failed to retrieve height"))?;
         let mut rng = rand::thread_rng();
         let reward_diff = rng.gen_range(50..1000);
         let reward_height = height - reward_diff;
-        Ok(Response::new(FollowerSubnetworkLastRewardHeightRespV1 { height, reward_height }))
+        Ok(Response::new(FollowerSubnetworkLastRewardHeightRespV1 {
+            height,
+            reward_height,
+        }))
     }
 }
